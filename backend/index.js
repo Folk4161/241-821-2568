@@ -1,98 +1,39 @@
 const express = require('express');
+const bodyParser = require('body-parser');
+const mysql = require('mysql2/promise');
 const app = express();
+const port = 8000
+app.use(bodyParser.json());
 
-const PORT = 8000;
-app.use(express.json());
+let conn = null
+const initDBConnection = async () => {
+    conn = await mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'root',
+        database: 'webdb',
+        port: 8821
+    })
+}
 
+//path = GET /users สำหรับ get ข้อมูล user ทั้งหมด
+app.get('/users', async (req, res) => {
+    const results = await conn.query('SELECT * FROM users');
+    res.json(results[0]);
+})
 
-let users = [];
-let counter = 1;
-app.get('/users', (req, res) => {
-    res.json(users);
-});
-
-app.post('/user', (req, res) => {
-    let user = req.body;
-    user.id = counter;
-    counter++;
-    users.push(user);
+// path = POST /users สำหรับเพิ่ม user ใหม่
+app.post('/users', async (req, res) => {
+   let user = req.body;
+   const results = await conn.query('INSERT INTO users SET ?', user);
+   console.log('results:', results);
     res.json({
-        message: 'User data received successfully',
-        user: user
+        message: 'User created successfully',
+        data: results[0]
     });
-});
+})
 
-
-app.patch('/user/:id', (req, res) => {
-    let id = req.params.id;
-    let updatedUser = req.body;
-
-    let selectedindex = users.findIndex(user => user.id == id);
-
-    if (selectedindex === -1) {
-        return res.status(404).json({
-            message: 'User not found',
-            id: id
-        });
-    }
-
-    if (updatedUser.name) {
-        users[selectedindex].name = updatedUser.name;
-    }
-
-    if (updatedUser.age) {
-        users[selectedindex].age = updatedUser.age;
-    }
-
-    res.json({
-        message: 'User updated successfully',
-        user: users[selectedindex],
-        indexUpdated: selectedindex
-    });
-});
-
-app.put('/user/:id', (req, res) => {
-    let id = req.params.id;
-    let updatedUser = req.body;
-
-    let selectedindex = users.findIndex(user => user.id == id);
-
-    if (selectedindex === -1) {
-        return res.status(404).json({
-            message: 'User not found',
-            id: id
-        });
-    }
-
-    updatedUser.id = id;
-    users[selectedindex] = updatedUser;
-
-    res.json({
-        message: 'User updated successfully',
-        user: updatedUser,
-        indexUpdated: selectedindex
-    });
-});
-app.delete('/user/:id', (req, res) => {
-    let id = req.params.id;
-
-    let selectedindex = users.findIndex(user => user.id == id);
-    
-    if (selectedindex === -1) {
-        return res.status(404).json({
-            message: 'User not found',
-            id: id
-        });
-    }
-
-    users.splice(selectedindex, 1);
-
-    res.json({
-        message: 'User deleted successfully',
-        indexDeleted: selectedindex
-    });
-});
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(port, async () => {
+    await initDBConnection();
+    console.log(`Server is running on port ${port}`)
 });
