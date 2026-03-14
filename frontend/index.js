@@ -1,13 +1,86 @@
-console.log('index.js loaded successfully');
+const base_url = 'http://localhost:8000/users';
 
-function submitData() {
+let mode = 'create';
+let seletedID = ''
+
+window.onload = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    console.log('id',id);
+    if (id) {
+        mode = 'edit';
+        seletedID = id;
+        try {
+            const response = await axios.get(`${base_url}/${id}`);
+            console.log('response', response.data);
+            const user = response.data;
+            //นำข้อมูลที่ได้มาแสดงในฟอร์ม
+            let firstnameDOM = document.querySelector('input[name="firstname"]');
+            let lastnameDOM = document.querySelector('input[name="lastname"]');
+            let ageDOM = document.querySelector('input[name="age"]');
+            let descriptionDOM = document.querySelector('textarea[name="description"]');
+            let genderDOMs = document.querySelectorAll('input[name="gender"]');
+
+            firstnameDOM.value = user.firstname;
+            lastnameDOM.value = user.lastname;
+            ageDOM.value = user.age;
+            descriptionDOM.value = user.description;
+
+            let interestDOMs = document.querySelectorAll('input[name="interest"]');
+
+            for (let i = 0; i < genderDOMs.length; i++) {
+                if (genderDOMs[i].value === user.gender) {
+                    genderDOMs[i].checked = true;
+                }
+            }
+            for (let i = 0; i < interestDOMs.length; i++) {
+                if (user.interest && (Array.isArray(user.interest) ? user.interest.includes(interestDOMs[i].value) : interestDOMs[i].value === user.interest)) {
+                    interestDOMs[i].checked = true;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+    }
+
+    // Update button text
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.textContent = mode === 'edit' ? 'แก้ไขข้อมูล' : 'ส่งข้อมูล';
+    }
+}
+console.log('index.js loaded successfully');
+const validateData = (data) => {
+    let errors = [];
+    if (!data.firstname){
+        errors.push('กรุณากรอกชื่อ');
+    }
+    if (!data.lastname){
+        errors.push('กรุณากรอกนามสกุล');
+    }
+    if (!data.age){
+        errors.push('กรุณากรอกอายุ');
+    }
+    if (!data.gender){
+        errors.push('กรุณากรอกเพศ');
+    }
+    if (!data.interest){
+        errors.push('กรุณาเลือกสิ่งที่สนใจ 1 อย่าง');
+    }
+    if (!data.description){
+        errors.push('กรุณากรอกคำอธิบาย');
+    }
+    return errors;
+};
+
+async function submitData() {
     console.log('submitData function called - START');
     
     // ดึงข้อมูลจากฟอร์ม
-    const firstnameInput = document.querySelector('input[name="firstname"]');
-    const lastnameInput = document.querySelector('input[name="lastname"]');
-    const ageInput = document.querySelector('input[name="age"]');
-    const descriptionInput = document.querySelector('textarea[name="description"]');
+    const firstnameInput = document.querySelector('input[name="firstname"]')||{};
+    const lastnameInput = document.querySelector('input[name="lastname"]')||{};
+    const ageInput = document.querySelector('input[name="age"]')||{};
+    const descriptionInput = document.querySelector('textarea[name="description"]')||{};
     
     if (!firstnameInput || !lastnameInput || !ageInput || !descriptionInput) {
         console.error('ไม่พบ input elements');
@@ -117,13 +190,20 @@ function submitData() {
         interest: selectedInterests[0],
         description: description.trim()
     };
-    
+
     // log data for debugging but do not show to user
     console.log('ข้อมูลที่ส่ง:', formData);
     try {
-         axios.post('http://localhost:8000/users', formData);
-        console.log('Data sent to backend successfully');
-        messageDOM.textContent = 'บันทึกข้อมูลสำเร็จ';
+        let response;
+        if (mode === 'edit') {
+            response = await axios.put(`${base_url}/${seletedID}`, formData);
+            console.log('Data updated successfully');
+            messageDOM.textContent = 'แก้ไขข้อมูลสำเร็จ';
+        } else {
+            response = await axios.post(base_url, formData);
+            console.log('Data sent to backend successfully');
+            messageDOM.textContent = 'บันทึกข้อมูลสำเร็จ';
+        }
         messageDOM.className = "message success";
     } catch (error) {
         if (error.response) {
